@@ -64,6 +64,7 @@ class Wizard(val context: Context, val device: Device) {
             field = value
             if (value != null && !started) {
                 started = true
+                prepareKeyboard()
                 safely(current) { onShow() }
             }
         }
@@ -87,6 +88,19 @@ class Wizard(val context: Context, val device: Device) {
     fun back() {
         if (current.back()) return
         if (index > 0) go(index - 1)
+    }
+
+    /** K9, the Nine suite's keyboard, from the first screen on: the Wi-Fi password is typed
+     *  with it. Once; a phone without K9 keeps its keyboard and asks again next time. */
+    private fun prepareKeyboard() {
+        if (prefs.getBoolean(KEY_KEYBOARD, false)) return
+        val done = try {
+            device.useKeyboard(K9_KEYBOARD)
+        } catch (e: Exception) {
+            Log.w("Setup", "Couldn't turn on K9", e)
+            false
+        }
+        if (done) prefs.edit().putBoolean(KEY_KEYBOARD, true).apply()
     }
 
     fun say(text: String) {
@@ -124,7 +138,9 @@ class Wizard(val context: Context, val device: Device) {
         }
     }
 
-    private companion object {
-        const val KEY_STEP = "step"
+    companion object {
+        const val K9_KEYBOARD = "io.github.ninetailsflip.k9/io.github.sspanak.tt9.ime.TraditionalT9"
+        private const val KEY_STEP = "step"
+        private const val KEY_KEYBOARD = "keyboard"
     }
 }

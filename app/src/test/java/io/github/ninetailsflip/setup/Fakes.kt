@@ -15,6 +15,8 @@ class FakeDevice : Device {
     var clock = 1_764_000_000_000L
     var pin: String? = null
     var finished = false
+    var keyboardInstalled = true
+    val keyboards = mutableListOf<String>()
 
     override fun supportedLocales() = locales
     override fun currentLocale() = currentLocaleValue
@@ -35,6 +37,7 @@ class FakeDevice : Device {
     override fun setTime(millis: Long) { clock = millis }
     override fun hasPin() = pin != null
     override fun setPin(pin: String): Boolean { this.pin = pin; return true }
+    override fun useKeyboard(imeId: String): Boolean { keyboards += imeId; return keyboardInstalled }
     override fun finishSetup() { finished = true }
 }
 

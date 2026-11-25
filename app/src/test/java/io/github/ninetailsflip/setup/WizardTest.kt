@@ -155,4 +155,20 @@ class WizardTest {
         assertEquals(4, jumpByKey(keys, 0, -1))
         assertNull(jumpByKey(listOf('A', 'A'), 0, 1))
     }
+
+    @Test
+    fun `K9 becomes the keyboard as setup starts, once`() {
+        assertEquals(listOf(Wizard.K9_KEYBOARD), device.keyboards)
+        Wizard(context, device).host = FakeHost()
+        assertEquals("not again once it worked", 1, device.keyboards.size)
+    }
+
+    @Test
+    fun `without K9 it asks again next time`() {
+        val other = FakeDevice().apply { keyboardInstalled = false }
+        context.getSharedPreferences("wizard", 0).edit().clear().commit()
+        Wizard(context, other).host = FakeHost()
+        Wizard(context, other).host = FakeHost()
+        assertEquals(2, other.keyboards.size)
+    }
 }

@@ -21,6 +21,11 @@
     <!-- Setup updates only with the image: nine-core's GitHub updates aren't for it. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
 
+    <!-- Whether K9 is installed, to make it the keyboard (Wizard.prepareKeyboard). -->
+    <queries>
+        <package android:name="io.github.ninetailsflip.k9" />
+    </queries>
+
     <application
         android:name=".SetupApp"
         android:allowBackup="false"

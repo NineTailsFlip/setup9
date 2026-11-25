@@ -164,6 +164,25 @@ class AndroidDevice(private val context: Context) : Device {
         false
     }
 
+    // ── Keyboard ────────────────────────────────────────────────────────────────────────────
+
+    override fun useKeyboard(imeId: String): Boolean = try {
+        context.packageManager.getPackageInfo(imeId.substringBefore('/'), 0)
+        // "id;subtype;subtype:id": the enabled keyboards, each with its enabled subtypes.
+        val enabled = Settings.Secure.getString(resolver, Settings.Secure.ENABLED_INPUT_METHODS).orEmpty()
+            .split(':').filter { it.isNotEmpty() }
+        if (enabled.none { it.substringBefore(';') == imeId }) {
+            Settings.Secure.putString(resolver, Settings.Secure.ENABLED_INPUT_METHODS, (enabled + imeId).joinToString(":"))
+        }
+        Settings.Secure.putString(resolver, Settings.Secure.DEFAULT_INPUT_METHOD, imeId)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
+    } catch (e: Exception) {
+        Log.w(TAG, "Couldn't switch to the keyboard $imeId", e)
+        false
+    }
+
     // ── Done ────────────────────────────────────────────────────────────────────────────────
 
     override fun finishSetup() {

@@ -35,6 +35,11 @@ interface Device {
     /** Sets a PIN where there's no lock yet; false when Android refused it. */
     fun setPin(pin: String): Boolean
 
+    // Keyboard
+    /** Turns on the keyboard [imeId] ("package/service") and makes it the one in use; false when
+     *  it isn't installed. */
+    fun useKeyboard(imeId: String): Boolean
+
     /** Marks the phone set up (so the status bar, notifications and the launcher come alive),
      *  takes Setup off the home screen and opens the launcher. */
     fun finishSetup()
