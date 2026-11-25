@@ -1,0 +1,3 @@
+[submodule "nine-core"]
+	path = nine-core
+	url = https://github.com/NineTailsFlip/nine-core.git

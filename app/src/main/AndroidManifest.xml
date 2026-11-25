@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- All granted by the image: Setup is a privileged app signed with the platform key. -->
+    <!-- The system's language. -->
+    <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" />
+    <!-- Finishing setup (device provisioned, user setup complete), automatic time. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.SET_TIME" />
+    <uses-permission android:name="android.permission.SET_TIME_ZONE" />
+    <!-- Listing and joining Wi-Fi networks without location access, as Settings does. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.NETWORK_SETTINGS" />
+    <uses-permission android:name="android.permission.NETWORK_SETUP_WIZARD" />
+    <!-- Setting the screen lock PIN. -->
+    <uses-permission android:name="android.permission.ACCESS_KEYGUARD_SECURE_STORAGE" />
+
+    <!-- Setup updates only with the image: nine-core's GitHub updates aren't for it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
+    <application
+        android:name=".SetupApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Setup"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.Nine">
+
+        <!-- The home screen until setup is done, then disabled: the system opens it at first
+             boot instead of the launcher (a privileged app's priority wins over L9's). -->
+        <activity
+            android:name=".SetupActivity"
+            android:configChanges="locale|layoutDirection|keyboard|keyboardHidden|navigation|fontScale"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="nosensor"
+            android:windowSoftInputMode="stateAlwaysHidden"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity">
+            <intent-filter android:priority="5">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.SETUP_WIZARD" />
+            </intent-filter>
+        </activity>
+
+        <!-- What the user chose for the Nine suite's look, read by every Nine app
+             (nine-core's SetupChoices). Read-only and not sensitive: a font and a hint bar. -->
+        <provider
+            android:name=".ChoicesProvider"
+            android:authorities="io.github.ninetailsflip.setup.choices"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+
+        <activity
+            android:name="io.github.ninetailsflip.update.UpdateActivity"
+            tools:node="remove" />
+    </application>
+</manifest>

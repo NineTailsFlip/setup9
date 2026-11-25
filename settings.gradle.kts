@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "setup9"
+
+// The Nine suite's core, and :update for SetupChoices (what every Nine app reads back), from the
+// nine-core submodule (git clone --recursive, or git submodule update --init).
+include(":core")
+project(":core").projectDir = file("nine-core/core")
+include(":update")
+project(":update").projectDir = file("nine-core/update")
+
+include(":app")
