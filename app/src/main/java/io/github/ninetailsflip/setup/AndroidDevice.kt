@@ -43,7 +43,7 @@ class AndroidDevice(private val context: Context) : Device {
 
     override fun currentLocale(): Locale = Resources.getSystem().configuration.locales[0]
 
-    override fun setLocale(locale: Locale) {
+    override fun setLocale(locale: Locale) = safely("set the language") {
         localePicker().getMethod("updateLocales", LocaleList::class.java).invoke(null, LocaleList(locale))
     }
 
@@ -54,19 +54,19 @@ class AndroidDevice(private val context: Context) : Device {
     override fun isWifiOn() = wifi.isWifiEnabled
 
     @Suppress("DEPRECATION") // Still allowed for an app holding NETWORK_SETTINGS.
-    override fun setWifiOn(on: Boolean) {
+    override fun setWifiOn(on: Boolean) = safely("turn Wi-Fi ${if (on) "on" else "off"}") {
         wifi.setWifiEnabled(on)
     }
 
     @Suppress("DEPRECATION")
-    override fun scan() {
+    override fun scan() = safely("scan for networks") {
         wifi.startScan()
     }
 
     // NETWORK_SETTINGS lets Setup see scan results without location access, as Settings does.
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION") // ScanResult.SSID: the plain name is all a list row needs.
-    override fun networks(): List<WifiNetwork> = wifi.scanResults
+    override fun networks(): List<WifiNetwork> = (runCatching { wifi.scanResults }.getOrNull() ?: emptyList())
         .filter { !it.SSID.isNullOrEmpty() }
         .groupBy { it.SSID }
         .map { (ssid, results) ->
@@ -91,7 +91,15 @@ class AndroidDevice(private val context: Context) : Device {
     }
 
     @Suppress("DEPRECATION") // addNetwork/enableNetwork: still Settings' way for NETWORK_SETTINGS holders.
-    override fun connect(network: WifiNetwork, password: String?): Boolean {
+    override fun connect(network: WifiNetwork, password: String?): Boolean = try {
+        join(network, password)
+    } catch (e: Exception) {
+        Log.w(TAG, "Couldn't join ${network.ssid}", e)
+        false
+    }
+
+    @Suppress("DEPRECATION")
+    private fun join(network: WifiNetwork, password: String?): Boolean {
         val config = WifiConfiguration().apply {
             SSID = "\"${network.ssid}\""
             when (network.security) {
@@ -116,26 +124,26 @@ class AndroidDevice(private val context: Context) : Device {
 
     override fun autoTime() = Settings.Global.getInt(resolver, Settings.Global.AUTO_TIME, 1) == 1
 
-    override fun setAutoTime(on: Boolean) {
+    override fun setAutoTime(on: Boolean) = safely("set automatic time") {
         Settings.Global.putInt(resolver, Settings.Global.AUTO_TIME, if (on) 1 else 0)
     }
 
     override fun autoZone() = Settings.Global.getInt(resolver, Settings.Global.AUTO_TIME_ZONE, 1) == 1
 
-    override fun setAutoZone(on: Boolean) {
+    override fun setAutoZone(on: Boolean) = safely("set automatic time zone") {
         Settings.Global.putInt(resolver, Settings.Global.AUTO_TIME_ZONE, if (on) 1 else 0)
     }
 
     override fun zoneId(): String = TimeZone.getDefault().id
 
-    override fun setZone(id: String) {
+    override fun setZone(id: String) = safely("set the time zone") {
         context.getSystemService(AlarmManager::class.java).setTimeZone(id)
         TimeZone.setDefault(TimeZone.getTimeZone(id))
     }
 
     override fun now() = System.currentTimeMillis()
 
-    override fun setTime(millis: Long) {
+    override fun setTime(millis: Long) = safely("set the time") {
         context.getSystemService(AlarmManager::class.java).setTime(millis)
     }
 
@@ -159,8 +167,10 @@ class AndroidDevice(private val context: Context) : Device {
     // ── Done ────────────────────────────────────────────────────────────────────────────────
 
     override fun finishSetup() {
-        Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1)
-        Settings.Secure.putInt(resolver, USER_SETUP_COMPLETE, 1)
+        safely("mark the phone set up") {
+            Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1)
+            Settings.Secure.putInt(resolver, USER_SETUP_COMPLETE, 1)
+        }
         context.packageManager.setComponentEnabledSetting(
             ComponentName(context, SetupActivity::class.java),
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
@@ -169,6 +179,16 @@ class AndroidDevice(private val context: Context) : Device {
         context.startActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
+    }
+
+    /** Setup is the home screen until it's done: a step that fails must not take it down with
+     *  it, or the phone has no screen to go to. */
+    private inline fun safely(what: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't $what", e)
+        }
     }
 
     private companion object {

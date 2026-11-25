@@ -2,6 +2,7 @@ package io.github.ninetailsflip.setup
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 
 /** One row of a step: a title over a dim line of details. [ok] runs on OK; [adjust] on Left and
  *  Right (-1 / +1), for a value shown as "‹ value ›". A row with neither only informs. */
@@ -63,7 +64,7 @@ class Wizard(val context: Context, val device: Device) {
             field = value
             if (value != null && !started) {
                 started = true
-                current.onShow()
+                safely(current) { onShow() }
             }
         }
     private var started = false
@@ -100,18 +101,27 @@ class Wizard(val context: Context, val device: Device) {
     /** Setup is done: the next setup (after a reset) starts from the beginning. */
     @SuppressLint("ApplySharedPref") // Written before Setup's screen goes away for good.
     fun finished() {
-        current.onHide()
+        safely(current) { onHide() }
         prefs.edit().putInt(KEY_STEP, 0).commit()
         host?.close()
     }
 
     private fun go(to: Int) {
-        current.onHide()
+        safely(current) { onHide() }
         index = to
         prefs.edit().putInt(KEY_STEP, to).apply()
         message = null
-        current.onShow()
+        safely(current) { onShow() }
         host?.showStep()
+    }
+
+    /** A step that fails to start or stop must not stop the setup: see SetupActivity.rowsOf. */
+    private inline fun safely(step: Step, block: Step.() -> Unit) {
+        try {
+            step.block()
+        } catch (e: Exception) {
+            Log.w("Setup", "${step.title} failed", e)
+        }
     }
 
     private companion object {

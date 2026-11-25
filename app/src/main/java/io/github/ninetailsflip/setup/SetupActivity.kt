@@ -9,6 +9,7 @@ import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.util.Log
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -115,17 +116,27 @@ class SetupActivity : NineActivity(), StepHost {
     override fun showStep() = showStep(-1)
 
     private fun showStep(row: Int) {
-        rows = wizard.current.rows()
+        rows = rowsOf(wizard.current)
         rowListView.notifyDataChanged()
-        rowListView.setSelectedIndex(if (row >= 0) row.coerceAtMost(rows.lastIndex) else wizard.current.initialRow())
+        val start = if (row >= 0) row else runCatching { wizard.current.initialRow() }.getOrDefault(0)
+        rowListView.setSelectedIndex(start.coerceIn(0, rows.lastIndex.coerceAtLeast(0)))
         render()
     }
 
     override fun refresh() {
-        rows = wizard.current.rows()
+        rows = rowsOf(wizard.current)
         rowListView.notifyDataChanged()
         if (rowListView.selectedIndex > rows.lastIndex) rowListView.setSelectedIndex(rows.lastIndex)
         render()
+    }
+
+    /** Setup is the home screen until it's done: a step that breaks still leaves a screen to
+     *  move on from. */
+    private fun rowsOf(step: Step): List<Row> = try {
+        step.rows()
+    } catch (e: Exception) {
+        Log.w(TAG, "${step.title}: couldn't list its rows", e)
+        listOf(Row("Continue", "this step didn't work: it can be done later in Settings") { wizard.next() })
     }
 
     private fun render() {
@@ -158,7 +169,12 @@ class SetupActivity : NineActivity(), StepHost {
     private fun submit() {
         val request = field ?: return
         field = null
-        request.onDone(input.text.toString())
+        try {
+            request.onDone(input.text.toString())
+        } catch (e: Exception) {
+            Log.w(TAG, "${wizard.current.title}: the typed text failed", e)
+            wizard.say("that didn't work: * skips this step")
+        }
         if (field == null) restartAt(rowListView.selectedIndex)
     }
 
@@ -192,7 +208,15 @@ class SetupActivity : NineActivity(), StepHost {
         return super.dispatchKeyEvent(event)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean = try {
+        handleKeyDown(keyCode, event)
+    } catch (e: Exception) {
+        Log.w(TAG, "${wizard.current.title}: a key failed", e)
+        wizard.say("that didn't work: * skips this step")
+        true
+    }
+
+    private fun handleKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (field != null) return super.onKeyDown(keyCode, event)
         if (menuSheet.handleKeyDown(keyCode, event)) return true
         wizard.clearMessage()
@@ -225,6 +249,7 @@ class SetupActivity : NineActivity(), StepHost {
     }
 
     private companion object {
+        const val TAG = "Setup"
         const val EXTRA_ROW = "row"
     }
 }

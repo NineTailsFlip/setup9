@@ -53,4 +53,15 @@ class SetupActivityTest {
         Choices.publish(app, 42L)
         assertEquals(mapOf("revision" to "42", "use_monospace_font" to "true", "show_hint_bar" to "false"), served())
     }
+
+    @Test
+    fun `a step that breaks still leaves a way on`() {
+        app.device = object : Device by FakeDevice() {
+            override fun supportedLocales(): List<java.util.Locale> = throw IllegalStateException("no locales")
+        }
+        val activity = Robolectric.buildActivity(SetupActivity::class.java).setup().get()
+        assertTrue(texts(activity.findViewById(android.R.id.content)).contains("Continue"))
+        press(activity, KeyEvent.KEYCODE_DPAD_CENTER)
+        assertTrue(texts(activity.findViewById(android.R.id.content)).contains("Wi-Fi"))
+    }
 }
