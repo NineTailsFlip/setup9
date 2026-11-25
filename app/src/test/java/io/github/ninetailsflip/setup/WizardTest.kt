@@ -45,10 +45,52 @@ class WizardTest {
     fun `back goes to the previous step, and the position survives a new process`() {
         wizard.next()
         wizard.next()
-        assertTrue(wizard.current is TimeStep)
+        assertTrue(wizard.current is KeyboardStep)
         wizard.back()
         assertTrue(wizard.current is WifiStep)
         assertTrue(Wizard(context, device).current is WifiStep)
+    }
+
+    @Test
+    fun `keyboard layouts start from K9's plus the phone's language, and any number can be ticked`() {
+        device.currentLocaleValue = Locale.forLanguageTag("ru-RU")
+        goTo(KeyboardStep::class.java)
+        wizard.current.onShow()
+        assertTrue(rows().first { it.title == "English" }.marked)
+        assertTrue("the phone's language is ticked", rows().first { it.title == "Русский" }.marked)
+        assertFalse(rows().first { it.title == "Deutsch" }.marked)
+
+        ok("Deutsch")
+        ok("English")
+        assertEquals("Deutsch, Русский", rows().first().meta)
+        ok("Continue")
+        assertEquals(setOf(2, 3), device.layouts.filter { it.enabled }.map { it.id }.toSet())
+        assertTrue(wizard.current is TimeStep)
+    }
+
+    @Test
+    fun `the last layout can't be unticked, and a refusal keeps the step`() {
+        device.layouts = listOf(KeyboardLayout(1, "English", "en", true))
+        goTo(KeyboardStep::class.java)
+        wizard.current.onShow()
+        ok("English")
+        assertEquals("at least one layout stays on", wizard.message)
+        assertTrue(rows().first { it.title == "English" }.marked)
+
+        device.layoutsAccepted = false
+        ok("Continue")
+        assertEquals("K9 didn't take the layouts", wizard.message)
+        assertTrue(wizard.current is KeyboardStep)
+    }
+
+    @Test
+    fun `without K9 the keyboard step only continues`() {
+        device.layouts = emptyList()
+        goTo(KeyboardStep::class.java)
+        wizard.current.onShow()
+        assertEquals(listOf("Continue"), rows().map { it.title })
+        ok("Continue")
+        assertTrue(wizard.current is TimeStep)
     }
 
     @Test

@@ -167,7 +167,70 @@ class WifiStep : Step("Wi-Fi") {
     )
 }
 
-// ── 3. Date and time ────────────────────────────────────────────────────────────────────────
+// ── 3. Keyboard layouts ─────────────────────────────────────────────────────────────────────
+
+/** Which of K9's layouts to type in: any number, at least one. Starts from what K9 has on, plus
+ *  the layout of the phone's language. Saved in K9 on Continue, so going back and forth costs
+ *  nothing; Settings → Keyboard changes it later. */
+class KeyboardStep : Step("Keyboard") {
+    private var layouts: List<KeyboardLayout> = emptyList()
+    private var chosen: MutableSet<Int>? = null
+
+    override fun subtitle() = "the layouts K9 types in · tick as many as you like"
+    override fun hint() = "ok tick · ←→ next letter · * menu"
+
+    override fun onShow() {
+        layouts = device.keyboardLayouts()
+        if (chosen == null && layouts.isNotEmpty()) chosen = initialChoice(layouts, device.currentLocale())
+    }
+
+    override fun rows(): List<Row> {
+        val chosen = chosen
+        if (layouts.isEmpty() || chosen == null) {
+            return listOf(Row("Continue", "K9 isn't installed: the phone's keyboard stays") { next() })
+        }
+        val names = layouts.filter { it.id in chosen }.joinToString(", ") { it.name }
+        return buildList {
+            add(Row("Continue", names) { save(chosen) })
+            layouts.forEach { layout ->
+                add(Row(layout.name, Locale.forLanguageTag(layout.localeTag).getDisplayName(Locale.ENGLISH), marked = layout.id in chosen) {
+                    toggle(chosen, layout)
+                })
+            }
+        }
+    }
+
+    private fun toggle(chosen: MutableSet<Int>, layout: KeyboardLayout) {
+        if (layout.id in chosen) {
+            if (chosen.size == 1) return say("at least one layout stays on")
+            chosen.remove(layout.id)
+        } else {
+            chosen.add(layout.id)
+        }
+        host?.refresh()
+    }
+
+    private fun save(chosen: Set<Int>) {
+        if (device.setKeyboardLayouts(layouts.map { it.id }.filter { it in chosen })) next()
+        else say("K9 didn't take the layouts")
+    }
+
+    override fun jump(from: Int, direction: Int) =
+        jumpByKey(listOf(' ') + layouts.map { it.name.first().uppercaseChar() }, from, direction)
+
+    companion object {
+        /** What K9 has on, plus the layout of the phone's language when K9 has one for it. */
+        fun initialChoice(layouts: List<KeyboardLayout>, locale: Locale): MutableSet<Int> {
+            val chosen = layouts.filter { it.enabled }.map { it.id }.toMutableSet()
+            val own = layouts.firstOrNull { Locale.forLanguageTag(it.localeTag).language == locale.language }
+            if (own != null) chosen.add(own.id)
+            if (chosen.isEmpty()) layouts.firstOrNull()?.let { chosen.add(it.id) }
+            return chosen
+        }
+    }
+}
+
+// ── 4. Date and time ────────────────────────────────────────────────────────────────────────
 
 class TimeZoneEntry(val id: String, val offsetMs: Int) {
     val city: String = id.substringAfterLast('/').replace('_', ' ')
@@ -262,7 +325,7 @@ class TimeStep : Step("Date and time") {
     }
 }
 
-// ── 4. Screen lock ──────────────────────────────────────────────────────────────────────────
+// ── 5. Screen lock ──────────────────────────────────────────────────────────────────────────
 
 class PinStep : Step("Screen lock") {
     override fun subtitle() = "a PIN keeps the phone yours if it's lost"
@@ -314,7 +377,7 @@ class PinStep : Step("Screen lock") {
     }
 }
 
-// ── 5. The Nine apps' look ──────────────────────────────────────────────────────────────────
+// ── 6. The Nine apps' look ──────────────────────────────────────────────────────────────────
 
 class LookStep : Step("The Nine apps") {
     override fun subtitle() = "how L9, C9, P9, M9, G9, TG9 and K9 look"
@@ -336,7 +399,7 @@ class LookStep : Step("The Nine apps") {
     }
 }
 
-// ── 6. Done ─────────────────────────────────────────────────────────────────────────────────
+// ── 7. Done ─────────────────────────────────────────────────────────────────────────────────
 
 class DoneStep : Step("All set") {
     override fun subtitle() = "OK on the first row starts the phone"
@@ -351,6 +414,7 @@ class DoneStep : Step("All set") {
             },
             Row("Language", locale.getDisplayName(locale)),
             Row("Wi-Fi", device.connectedSsid()?.let { "connected to $it" } ?: "not connected"),
+            Row("Keyboard", device.keyboardLayouts().filter { it.enabled }.joinToString(", ") { it.name }.ifEmpty { "the phone's own" }),
             Row("Screen lock", if (device.hasPin()) "PIN" else "none"),
             Row("Nine apps", listOf(
                 if (Choices.monospace(context)) "monospace font" else "proportional font",

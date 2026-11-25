@@ -39,11 +39,18 @@ interface Device {
     /** Turns on the keyboard [imeId] ("package/service") and makes it the one in use; false when
      *  it isn't installed. */
     fun useKeyboard(imeId: String): Boolean
+    /** K9's layouts (its languages), each with whether it's on; empty when K9 isn't installed. */
+    fun keyboardLayouts(): List<KeyboardLayout>
+    /** Turns on exactly [ids] in K9; false when K9 refused or isn't there. */
+    fun setKeyboardLayouts(ids: List<Int>): Boolean
 
     /** Marks the phone set up (so the status bar, notifications and the launcher come alive),
      *  takes Setup off the home screen and opens the launcher. */
     fun finishSetup()
 }
+
+/** One of K9's layouts: [name] in its own language, [localeTag] a BCP 47 tag. */
+data class KeyboardLayout(val id: Int, val name: String, val localeTag: String, val enabled: Boolean)
 
 data class WifiNetwork(val ssid: String, val security: WifiSecurity, val level: Int)
 

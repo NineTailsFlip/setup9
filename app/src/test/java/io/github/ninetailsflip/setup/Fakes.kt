@@ -17,6 +17,12 @@ class FakeDevice : Device {
     var finished = false
     var keyboardInstalled = true
     val keyboards = mutableListOf<String>()
+    var layouts = listOf(
+        KeyboardLayout(1, "English", "en", true),
+        KeyboardLayout(2, "Deutsch", "de", false),
+        KeyboardLayout(3, "Русский", "ru", false),
+    )
+    var layoutsAccepted = true
 
     override fun supportedLocales() = locales
     override fun currentLocale() = currentLocaleValue
@@ -38,6 +44,12 @@ class FakeDevice : Device {
     override fun hasPin() = pin != null
     override fun setPin(pin: String): Boolean { this.pin = pin; return true }
     override fun useKeyboard(imeId: String): Boolean { keyboards += imeId; return keyboardInstalled }
+    override fun keyboardLayouts() = layouts
+    override fun setKeyboardLayouts(ids: List<Int>): Boolean {
+        if (!layoutsAccepted) return false
+        layouts = layouts.map { it.copy(enabled = it.id in ids) }
+        return true
+    }
     override fun finishSetup() { finished = true }
 }
 

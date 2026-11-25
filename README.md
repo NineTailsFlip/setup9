@@ -8,6 +8,7 @@ step reachable with the D-pad, OK, Back and `*`.
 |---|---|
 | Language | the system language (the Nine apps themselves stay in English) |
 | Wi-Fi | turns Wi-Fi on, lists networks and joins one; a password is typed below the list |
+| Keyboard | which of K9's layouts are on, any number of them (the phone's language is ticked to start) |
 | Date and time | automatic date, time and time zone, or each by hand; time zones west to east |
 | Screen lock | a PIN of 4 to 16 digits, typed twice, or none |
 | The Nine apps | font (monospace or proportional) and hint bar for every Nine app at once |

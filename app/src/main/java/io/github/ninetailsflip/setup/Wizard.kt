@@ -56,7 +56,7 @@ abstract class Step(val title: String) {
 
 /** The setup's steps and where it is. The position survives a restart of the phone mid-setup. */
 class Wizard(val context: Context, val device: Device) {
-    val steps: List<Step> = listOf(LanguageStep(), WifiStep(), TimeStep(), PinStep(), LookStep(), DoneStep())
+    val steps: List<Step> = listOf(LanguageStep(), WifiStep(), KeyboardStep(), TimeStep(), PinStep(), LookStep(), DoneStep())
         .onEach { it.wizard = this }
 
     var host: StepHost? = null

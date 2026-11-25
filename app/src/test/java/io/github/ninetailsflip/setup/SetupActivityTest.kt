@@ -33,7 +33,7 @@ class SetupActivityTest {
         val activity = Robolectric.buildActivity(SetupActivity::class.java).setup().get()
         val shown = texts(activity.findViewById(android.R.id.content))
         assertTrue(shown.contains("Language"))
-        assertTrue(shown.any { it.startsWith("1 of 6") })
+        assertTrue(shown.any { it.startsWith("1 of 7") })
 
         press(activity, KeyEvent.KEYCODE_DPAD_DOWN)
         press(activity, KeyEvent.KEYCODE_DPAD_CENTER)

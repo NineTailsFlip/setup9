@@ -4,10 +4,12 @@ import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.KeyguardManager
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.net.Uri
 import android.net.wifi.SupplicantState
 import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
@@ -183,6 +185,32 @@ class AndroidDevice(private val context: Context) : Device {
         false
     }
 
+    // K9's layouts, through its LanguagesProvider; changing them takes WRITE_SECURE_SETTINGS.
+    override fun keyboardLayouts(): List<KeyboardLayout> = try {
+        resolver.query(K9_LANGUAGES, null, null, null, null)?.use { c ->
+            val id = c.getColumnIndexOrThrow("id")
+            val name = c.getColumnIndexOrThrow("name")
+            val locale = c.getColumnIndexOrThrow("locale")
+            val enabled = c.getColumnIndexOrThrow("enabled")
+            buildList {
+                while (c.moveToNext()) {
+                    add(KeyboardLayout(c.getInt(id), c.getString(name), c.getString(locale), c.getInt(enabled) == 1))
+                }
+            }
+        }.orEmpty()
+    } catch (e: Exception) {
+        Log.w(TAG, "Couldn't list K9's layouts", e)
+        emptyList()
+    }
+
+    override fun setKeyboardLayouts(ids: List<Int>): Boolean = try {
+        val values = ContentValues().apply { put("enabled", ids.joinToString(",")) }
+        resolver.update(K9_LANGUAGES, values, null, null) > 0
+    } catch (e: Exception) {
+        Log.w(TAG, "Couldn't set K9's layouts", e)
+        false
+    }
+
     // ── Done ────────────────────────────────────────────────────────────────────────────────
 
     override fun finishSetup() {
@@ -215,5 +243,7 @@ class AndroidDevice(private val context: Context) : Device {
         const val PER_USER_RANGE = 100_000
         /** Settings.Secure.USER_SETUP_COMPLETE, a hidden constant. */
         const val USER_SETUP_COMPLETE = "user_setup_complete"
+        /** K9's LanguagesProvider. */
+        val K9_LANGUAGES: Uri = Uri.parse("content://io.github.ninetailsflip.k9.languages/languages")
     }
 }
