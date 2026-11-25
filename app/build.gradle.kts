@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     kotlin("android")
 }
+
+// CI writes keystore.properties for a release (NineTailsFlip/.github's android.yml).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = project.file("keystore.properties")
+val hasKeystore = keystorePropertiesFile.exists()
+if (hasKeystore) keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 
 // Setup — the phone's first-time setup on NineTailsFlip's LineageOS build, in the Nine suite's
 // look: language, Wi-Fi, date and time, a PIN, and the look of every Nine app. It replaces
@@ -19,14 +27,24 @@ android {
         versionName = "0.1.0"
     }
 
+    if (hasKeystore) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // The image re-signs it with the platform key; the debug key only makes it installable
-            // for a try on a test phone.
-            signingConfig = signingConfigs.getByName("debug")
+            // The image re-signs it with the platform key either way.
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             vcsInfo { include = false }
         }
     }
